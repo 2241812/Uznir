@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 type BookingStatus = "scheduled" | "in_progress" | "completed" | "cancelled" | "disputed";
 
@@ -18,7 +18,7 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
   // Verify the user is a participant
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
-    .select("id, customer_id, worker_id, status")
+    .select("id, customer_id, worker_id, listing_id, status")
     .eq("id", bookingId)
     .single();
 

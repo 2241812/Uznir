@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createReviewSchema } from "@/lib/validation/reviews";
-import { revalidatePath } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 export async function createReview(bookingId: string, subjectId: string, rating: number, body?: string) {
   const supabase = await createClient();
@@ -49,7 +49,7 @@ export async function createReview(bookingId: string, subjectId: string, rating:
   const { error } = await supabase.from("reviews").insert({
     booking_id: bookingId,
     author_id: user.id,
-    subject_id,
+    subject_id: subjectId,
     rating: result.data.rating,
     body: result.data.body || null,
   });

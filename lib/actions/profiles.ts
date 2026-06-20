@@ -2,11 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { updateProfileSchema, updateWorkerProfileSchema } from "@/lib/validation/profiles";
-import { revalidatePath } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 export async function updateProfile(formData: {
   display_name?: string;
   phone?: string;
+  avatar_url?: string;
 }) {
   const supabase = await createClient();
   const {

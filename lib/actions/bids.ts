@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createBidSchema, type CreateBidInput } from "@/lib/validation/bids";
-import { revalidatePath } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 export async function createBid(_input: CreateBidInput) {
   const supabase = await createClient();

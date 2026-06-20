@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createListingSchema, type CreateListingInput } from "@/lib/validation/listings";
-import { revalidatePath } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 export async function createListing(_input: CreateListingInput) {
   const supabase = await createClient();

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RoleSelectForm } from "./RoleSelectForm";
 
 export const metadata: Metadata = {
   title: "Choose your role",
@@ -14,46 +15,7 @@ export default function RoleSelectPage() {
         </p>
       </div>
 
-      <div className="space-y-3">
-        <button
-          type="button"
-          className="flex w-full items-center gap-4 rounded-xl border p-4 text-left hover:bg-muted transition-colors"
-        >
-          <span className="text-2xl">🔍</span>
-          <div>
-            <p className="font-semibold">I need help (Customer)</p>
-            <p className="text-sm text-muted-foreground">
-              Post jobs and find nearby workers
-            </p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          className="flex w-full items-center gap-4 rounded-xl border p-4 text-left hover:bg-muted transition-colors"
-        >
-          <span className="text-2xl">🛠️</span>
-          <div>
-            <p className="font-semibold">I want to work (Worker)</p>
-            <p className="text-sm text-muted-foreground">
-              Offer your skills and find jobs
-            </p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          className="flex w-full items-center gap-4 rounded-xl border p-4 text-left hover:bg-muted transition-colors"
-        >
-          <span className="text-2xl">🔄</span>
-          <div>
-            <p className="font-semibold">Both</p>
-            <p className="text-sm text-muted-foreground">
-              Post jobs and offer your skills
-            </p>
-          </div>
-        </button>
-      </div>
+      <RoleSelectForm />
     </div>
   );
 }
