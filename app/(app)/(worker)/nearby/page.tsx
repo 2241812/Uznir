@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getUserLocation, RADIUS_OPTIONS, type RadiusKm } from "@/lib/geo";
 import { formatCurrency, formatDistance } from "@/lib/utils/currency";
 import { t } from "@/lib/i18n";
+import { StarRating } from "@/components/features/StarRating";
 import { MapPin, Star, Clock, Loader2 } from "lucide-react";
 import type { NearbyWorker } from "@/lib/supabase/types";
 
@@ -152,10 +153,7 @@ export default function NearbyPage() {
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold truncate">{worker.display_name}</h3>
                   {worker.rating > 0 && (
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      {worker.rating.toFixed(1)}
-                    </span>
+                    <StarRating value={worker.rating} size={14} showNumber />
                   )}
                 </div>
                 <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">

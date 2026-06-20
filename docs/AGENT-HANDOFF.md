@@ -11,16 +11,16 @@
 - **Platform:** Web (PWA) now, React Native later
 - **Node:** 20+ (see `.nvmrc`)
 
-## Current state — M0 Foundation is COMPLETE ✅
+## Current state — M1 Core Loop is COMPLETE ✅
 
-The project is scaffolded, all 19 routes build successfully, and the PWA is installable. The build passes cleanly: `npm run build` → ✓ Compiled successfully.
+The full marketplace transaction loop is wired end-to-end: post job → bid → award → chat → pay → complete → review. The build passes cleanly: `npm run build` → ✓ 22 routes compiled.
 
 ### What's done
 
 | Area | Status | Details |
 |---|---|---|
 | Project scaffold | ✅ Done | package.json, tsconfig, postcss, next.config with Serwist |
-| Git repo | ✅ Done | Initialized locally, committed |
+| Git repo | ✅ Done | Pushed to https://github.com/2241812/Uznir (main branch) |
 | Documentation | ✅ Done | README, AGENTS.md, architecture.md, data-model.md, payments.md, roadmap.md, deployment.md, CONTRIBUTING.md, **this handoff doc** |
 | Custom skills | ✅ Done | skills/uznir-feature, uznir-rls, uznir-db-migration, uznir-i18n |
 | Supabase lib | ✅ Done | client.ts, server.ts, middleware.ts, types.ts (hand-written — replace with `db:types` output after linking) |
@@ -29,15 +29,19 @@ The project is scaffolded, all 19 routes build successfully, and the PWA is inst
 | Validation | ✅ Done | zod schemas for profiles, listings, bids, bookings, reviews, messages |
 | Geo utils | ✅ Done | getUserLocation(), haversineDistance(), RADIUS_OPTIONS |
 | DB migrations | ✅ Done | 8 migrations: profiles+auth, trades+workers, listings, bids, bookings, reviews+messages, payments_ledger, PostGIS RPC+FTS |
-| Seed data | ✅ Done | 12 trade categories |
+| Seed data | ✅ Done | 12 trade categories (mirrored in lib/trades.ts) |
 | App shell | ✅ Done | Root, marketing, auth, (app) layouts with sidebar + mobile bottom nav |
-| Pages (19) | ✅ Done | All route groups populated |
+| Pages (22) | ✅ Done | All route groups populated with real data queries |
 | shadcn components | ✅ Done | Button, Input, Card, Label, Badge, Select, Skeleton |
-| PWA | ✅ Done | manifest.ts, sw.ts (Serwist v9), offline.html, **all icons generated** |
+| PWA | ✅ Done | manifest.ts, sw.ts (Serwist v9), offline.html, all icons generated |
 | Webhook handler | ✅ Done | Xendit webhook at /api/webhooks/xendit |
-| GitHub templates | ✅ Done | Bug report, feature request, PR template |
-| Config files | ✅ Done | .env.example, .gitignore, .gitattributes, .nvmrc, supabase/config.toml |
-| **Build** | ✅ **PASSES** | `npm run build` → ✓ Compiled successfully (19 routes) |
+| **Server Actions (7)** | ✅ **Done** | listings, bids, bookings, messages, profiles, reviews, payments |
+| **Core loop UI** | ✅ **Done** | post-job, find-work, job detail (bids), chat (realtime), booking lifecycle, payment |
+| **Dashboards** | ✅ **Done** | dashboard (live stats), my-jobs (bid counts), my-bids (earnings) |
+| **Auth role select** | ✅ **Done** | role-select after signup + role switcher in profile |
+| **Profile editor** | ✅ **Done** | basic info + worker profile (bio, rate, availability, trades) |
+| **Reviews (M2 started)** | ✅ **Partial** | StarRating component + ReviewForm on completed bookings + rating display |
+| **Build** | ✅ **PASSES** | `npm run build` → ✓ 22 routes, type-check + lint clean |
 
 ### Build output reference
 
@@ -65,7 +69,7 @@ supabase link --project-ref <your-project-ref>
 supabase db push                 # applies all 8 migrations
 npm run db:types                 # generates lib/supabase/database.types.ts
 ```
-Then update `lib/supabase/types.ts` import to use the generated types, or delete it and import from `database.types.ts`.
+Then update `lib/supabase/types.ts` import to use the generated types, or delete it and import from `database.types.ts`. NOTE: the untyped supabase client currently infers one-to-many joins as arrays even for many-to-one relations — see `app/(app)/(worker)/find-work/page.tsx` for the workaround pattern (`profiles: { display_name: string }[]`). Generating proper Database types will fix this and let you simplify those casts.
 
 ### 2. Fill in `.env.local`
 ```bash
@@ -76,53 +80,35 @@ Critical values:
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (Google Cloud Console → OAuth, configured in Supabase Auth providers)
 - `XENDIT_SECRET_KEY` + `XENDIT_WEBHOOK_SECRET` (Xendit dashboard)
 
-### 3. Test locally
+### 3. Finish M2 — Trust & Reputation (IN PROGRESS)
+The review form + StarRating component are done. Remaining M2 work:
+- [ ] Add an aggregate rating display + review list to a public worker profile view (currently the worker profile shown to customers is just the `/nearby` card — no dedicated public profile page exists)
+- [ ] Worker verification flow: upload gov't ID → `verifications` table (needs new migration) → admin review → verified badge on profiles
+- [ ] Profile completeness prompts (banner nudging workers to fill bio, trades, rate)
+- [ ] Portfolio/photo upload for workers (Supabase Storage bucket + UI)
+- [ ] Reporting/blocking users (new `reports` table + UI)
+
+The `createReview` Server Action (`lib/actions/reviews.ts`) and `reviews` table with RLS already exist. The `worker_profiles.rating` column is updated by a DB trigger (verify the trigger exists in `supabase/migrations/20260620000005_reviews_and_messages.sql` — if not, add one).
+
+### 4. M3 — Discovery & Search
+- [ ] Wire the `listings_search` Postgres FTS RPC (index already exists in migration `20260620000007`) into the find-work search bar (currently uses simple ILIKE)
+- [ ] Add filters: price range, rating threshold (combine with existing trade/distance filters)
+- [ ] Geolocation autocomplete (address → lat/lng via a geocoding provider)
+
+### 5. M4 — Scale PH (production readiness)
+- [ ] GCash/Maya live payment integration (real Xendit keys)
+- [ ] Push notifications (job awarded, new bid, chat message, payment received)
+- [ ] Offline mode (view cached jobs, queue mutations) — Serwist runtime caching config
+- [ ] NPC Data Privacy Act compliance (privacy notice, data retention policy)
+- [ ] Analytics (PostHog) + error tracking (Sentry)
+- [ ] Security audit (RLS policies, auth flow, webhook signatures)
+- [ ] Deploy: Frontend → Vercel, Backend → Supabase (see docs/deployment.md)
+
+### 6. Test the core loop locally
 ```bash
 npm run dev
 ```
-- Visit `/home` → landing page
-- Click login → Google OAuth or email OTP
-- After auth, `/dashboard` renders with role-aware nav
-- `/nearby` → "Who's near?" page (needs PostGIS data — see step 4)
-
-### 4. Seed test data for the "Who's near?" feature
-The `nearby` page calls the `nearby_workers` RPC. To see results, you need at least one worker with a location. Run in Supabase SQL Editor:
-```sql
--- Insert a test worker near Manila (14.5995, 120.9842)
-insert into worker_profiles (profile_id, bio, hourly_rate, location, is_available)
-values (
-  '<some-user-uuid>',
-  'Test plumber',
-  350.00,
-  st_setsrid(st_makepoint(120.9900, 14.6000), 4326)::geography,
-  true
-);
-insert into worker_trades (worker_id, trade_id) values ('<some-user-uuid>', 3); -- plumber
-```
-
-### 5. Push to GitHub
-```bash
-git remote add origin https://github.com/2241812/Uznir.git
-git branch -M main
-git push -u origin main
-```
-
-### 6. Deploy (M4) — see docs/deployment.md
-- Frontend → Vercel
-- Backend → Supabase (already linked)
-- Payments → Xendit webhooks
-
-### 7. M1 — Core loop (the next big milestone)
-This is the major feature work:
-- Wire up post-job form → Server Action → `listings` insert
-- Bid form → Server Action → `bids` insert
-- Award bid action → create `booking`, update `listings.status='awarded'`
-- Chat page → Supabase Realtime on `messages`
-- Payment charge flow via `getGateway().createCharge()`
-- Payout flow on booking completion
-- Booking status lifecycle (scheduled → in_progress → completed)
-
-See `docs/roadmap.md` for full M1 acceptance criteria.
+The full flow is wired: sign up → pick role → post job (customer) / find work + bid (worker) → award → chat (realtime) → pay → mark complete → review. You need real Supabase linked (step 1) for any of this to work at runtime.
 
 ## Architecture cheat sheet
 

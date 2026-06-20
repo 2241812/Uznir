@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils/currency";
 import { BookingActions } from "./BookingActions";
+import { ReviewForm } from "./ReviewForm";
+import { StarRating } from "@/components/features/StarRating";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MessageSquare, Wallet, Calendar } from "lucide-react";
 
@@ -74,6 +76,26 @@ export default async function BookingDetailPage({
     .select("id, direction, amount, provider, status, created_at")
     .eq("booking_id", id)
     .order("created_at", { ascending: true });
+
+  // Reviews: if completed, show existing reviews + (if the user hasn't yet) a form.
+  let myReviewExists = false;
+  let reviews: { id: string; rating: number; body: string | null; author_id: string }[] = [];
+  if (booking.status === "completed") {
+    const { data: reviewCheck } = await supabase
+      .from("reviews")
+      .select("id")
+      .eq("booking_id", id)
+      .eq("author_id", user.id)
+      .maybeSingle();
+    myReviewExists = !!reviewCheck;
+
+    const { data: reviewRows } = await supabase
+      .from("reviews")
+      .select("id, rating, body, author_id")
+      .eq("booking_id", id)
+      .order("created_at", { ascending: true });
+    reviews = reviewRows ?? [];
+  }
 
   const statusSteps = ["scheduled", "in_progress", "completed"];
   const currentStepIndex = statusSteps.indexOf(booking.status);
@@ -217,6 +239,39 @@ export default async function BookingDetailPage({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Reviews: shown when booking is completed */}
+      {booking.status === "completed" && (
+        <div className="mt-6 space-y-4">
+          <h2 className="text-sm font-semibold">Reviews</h2>
+
+          {/* Existing reviews */}
+          {reviews.length > 0 && (
+            <div className="space-y-3">
+              {reviews.map((r) => (
+                <div key={r.id} className="rounded-xl border bg-card p-4 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <StarRating value={r.rating} />
+                    <span className="text-xs text-muted-foreground">
+                      {r.author_id === user.id ? "Your review" : "Review"}
+                    </span>
+                  </div>
+                  {r.body && <p className="mt-2 text-sm">{r.body}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Review form (if user hasn't reviewed yet) */}
+          {!myReviewExists && (
+            <ReviewForm
+              bookingId={booking.id}
+              subjectId={otherId}
+              subjectName={otherProfile?.display_name ?? "your partner"}
+            />
+          )}
         </div>
       )}
     </div>
