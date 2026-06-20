@@ -1,0 +1,19 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Chat",
+};
+
+export default function ChatPage() {
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <h1 className="text-2xl font-bold">Chat</h1>
+      <p className="mt-1 text-muted-foreground">
+        Message your job partner.
+      </p>
+      <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border bg-muted/30 py-16">
+        <p className="text-muted-foreground">No messages yet. Say hello!</p>
+      </div>
+    </div>
+  );
+}
