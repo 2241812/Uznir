@@ -63,6 +63,9 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
   if (status === "in_progress" && !isWorker) {
     return { success: false, error: "Only the worker can mark the job as in progress" };
   }
+  if (status === "cancelled" && !isCustomer) {
+    return { success: false, error: "Only the customer can cancel a booking" };
+  }
 
   const { error } = await supabase
     .from("bookings")

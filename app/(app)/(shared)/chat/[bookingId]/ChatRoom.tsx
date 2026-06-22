@@ -37,6 +37,7 @@ export function ChatRoom({
   const [partnerTyping, setPartnerTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<ReturnType<typeof createClient> extends { channel: (name: string) => infer C } ? C : any>(null);
 
   // Scroll to bottom on new messages.

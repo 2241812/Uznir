@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -269,7 +269,7 @@ export type Database = {
           id: string
           is_verified: boolean | null
           phone: string | null
-          role: string
+          role: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -278,7 +278,7 @@ export type Database = {
           id: string
           is_verified?: boolean | null
           phone?: string | null
-          role?: string
+          role?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -287,7 +287,7 @@ export type Database = {
           id?: string
           is_verified?: boolean | null
           phone?: string | null
-          role?: string
+          role?: string | null
         }
         Relationships: []
       }
