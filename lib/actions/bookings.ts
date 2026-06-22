@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { updateBookingStatusSchema } from "@/lib/validation/booking";
 
 type BookingStatus = "scheduled" | "in_progress" | "completed" | "cancelled" | "disputed";
 
@@ -13,6 +14,11 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
 
   if (!user) {
     return { success: false, error: "Not authenticated" };
+  }
+
+  const result = updateBookingStatusSchema.safeParse({ booking_id: bookingId, status });
+  if (!result.success) {
+    return { success: false, error: "Invalid input" };
   }
 
   // Verify the user is a participant
@@ -42,6 +48,20 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
   const allowed = validTransitions[booking.status] || [];
   if (!allowed.includes(status)) {
     return { success: false, error: `Cannot transition from ${booking.status} to ${status}` };
+  }
+
+  // Role-based authorization: not all participants can drive all transitions.
+  // - Only the WORKER may mark work as completed or in-progress.
+  // - Only the CUSTOMER may cancel an active booking.
+  // - Either party may dispute.
+  const isWorker = booking.worker_id === user.id;
+  const isCustomer = booking.customer_id === user.id;
+
+  if (status === "completed" && !isWorker) {
+    return { success: false, error: "Only the worker can mark the job as completed" };
+  }
+  if (status === "in_progress" && !isWorker) {
+    return { success: false, error: "Only the worker can mark the job as in progress" };
   }
 
   const { error } = await supabase

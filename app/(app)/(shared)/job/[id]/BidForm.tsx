@@ -91,7 +91,7 @@ export function BidForm({ listingId }: { listingId: string }) {
 
       <div className="mt-4 space-y-4">
         <div>
-          <Label htmlFor="amount">Your offer (₱)</Label>
+          <Label htmlFor="amount">Your offer (PHP)</Label>
           <Input
             id="amount"
             type="number"

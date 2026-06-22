@@ -13,19 +13,6 @@ export const metadata: Metadata = {
 // Revalidate this page frequently so newly posted jobs appear.
 export const revalidate = 30;
 
-// Shape of the joined row returned by Supabase.
-// Without a generated Database schema, the supabase-js client types one-to-many
-// joins as arrays even for many-to-one relations, so `profiles` is typed as an array.
-type OpenListing = {
-  id: string;
-  title: string;
-  description: string | null;
-  budget: number | null;
-  trade_id: number | null;
-  created_at: string;
-  profiles: { display_name: string }[] | null;
-};
-
 export default async function FindWorkPage({
   searchParams,
 }: {
@@ -52,10 +39,19 @@ export default async function FindWorkPage({
   }
 
   if (query) {
+    // Sanitize query to prevent filter injection
+    const sanitized = query
+      .replace(/\\/g, '\\\\')
+      .replace(/%/g, '\\%')
+      .replace(/_/g, '\\_')
+      .replace(/,/g, '\\,')
+      .replace(/\./g, '\\.')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
     // Simple ILIKE search on title + description. PostGIS full-text search
     // (search_vector) is available via the `listings_search` RPC for advanced use.
     builder = builder.or(
-      `title.ilike.%${query}%,description.ilike.%${query}%`
+      `title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`
     );
   }
 
@@ -159,7 +155,7 @@ export default async function FindWorkPage({
                     )}
                     <span className="inline-flex items-center gap-1">
                       <MapPin className="h-3.5 w-3.5" />
-                      {job.profiles?.[0]?.display_name ?? "Customer"}
+                      {(job.profiles as { display_name?: string })?.display_name ?? "Customer"}
                     </span>
                     <span className="text-xs">
                       {new Date(job.created_at).toLocaleDateString("en-PH", {

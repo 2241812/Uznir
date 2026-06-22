@@ -34,6 +34,21 @@ export async function createReview(bookingId: string, subjectId: string, rating:
     return { success: false, error: "Not a participant of this booking" };
   }
 
+  // Validate subjectId is the OTHER participant (defense-in-depth;
+  // the RLS policy also enforces this, but the action should catch it first).
+  const otherParticipantId =
+    booking.customer_id === user.id
+      ? booking.worker_id
+      : booking.customer_id;
+
+  if (subjectId !== otherParticipantId) {
+    return { success: false, error: "You can only review the other participant" };
+  }
+
+  if (subjectId === user.id) {
+    return { success: false, error: "You cannot review yourself" };
+  }
+
   // Check if already reviewed
   const { data: existing } = await supabase
     .from("reviews")

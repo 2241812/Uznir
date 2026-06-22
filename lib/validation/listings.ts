@@ -14,8 +14,8 @@ export const createListingSchema = z.object({
     .number()
     .min(50, "Minimum budget is ₱50")
     .max(100000, "Maximum budget is ₱100,000"),
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
+  lat: z.number().finite().min(-90).max(90),
+  lng: z.number().finite().min(-180).max(180),
 });
 
 export type CreateListingInput = z.infer<typeof createListingSchema>;

@@ -12,7 +12,7 @@ import { PayMongoGateway } from "./paymongo";
  *   const charge = await gateway.createCharge({ ... });
  */
 export function getGateway(): PaymentGateway {
-  const provider = process.env.NEXT_PUBLIC_PAYMENT_GATEWAY || "xendit";
+  const provider = process.env.PAYMENT_GATEWAY || "xendit";
 
   switch (provider) {
     case "xendit":

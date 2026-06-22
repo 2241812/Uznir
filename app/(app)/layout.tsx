@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignOutButton } from "@/components/features/SignOutButton";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -17,16 +18,21 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     .from("profiles")
     .select("role, display_name, avatar_url")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  const role = profile?.role || "customer";
-  const displayName = profile?.display_name || user.email || "User";
-  const avatarUrl = profile?.avatar_url;
+  // Force users without a role to role-select before they can access the app.
+  // This catches: new signups whose handle_new_user trigger failed,
+  // and any user whose role was never explicitly chosen.
+  if (!profile || !profile.role) {
+    redirect("/role-select");
+  }
+
+  const role = profile.role;
 
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="hidden w-64 border-r bg-card lg:block">
+      <aside className="hidden flex-col w-64 border-r bg-card lg:flex">
         <div className="flex h-16 items-center gap-2 border-b px-6">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
             U
@@ -50,6 +56,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <NavLink href="/chat" label="Messages" />
           <NavLink href="/profile" label="Profile" />
         </nav>
+        <div className="mt-auto border-t p-4">
+          <SignOutButton />
+        </div>
       </aside>
 
       {/* Mobile bottom nav */}

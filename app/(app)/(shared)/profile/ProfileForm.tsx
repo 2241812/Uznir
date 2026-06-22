@@ -262,7 +262,7 @@ export function ProfileForm({
               </div>
 
               <div>
-                <Label htmlFor="hourly_rate">Hourly rate (₱)</Label>
+                <Label htmlFor="hourly_rate">Hourly rate (PHP)</Label>
                 <Input
                   id="hourly_rate"
                   type="number"

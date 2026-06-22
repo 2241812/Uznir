@@ -20,11 +20,15 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
     .select("display_name, phone, avatar_url, role")
     .eq("id", user.id)
     .single();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error("Failed to load profile: " + error.message);
+  }
 
   const role = profile?.role ?? "customer";
   const isWorker = role === "worker" || role === "both";

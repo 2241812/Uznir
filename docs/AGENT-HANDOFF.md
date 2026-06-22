@@ -11,9 +11,11 @@
 - **Platform:** Web (PWA) now, React Native later
 - **Node:** 20+ (see `.nvmrc`)
 
-## Current state — M1 Core Loop is COMPLETE ✅
+## Current state — M1 Core Loop + Auth + Security hardening COMPLETE ✅
 
-The full marketplace transaction loop is wired end-to-end: post job → bid → award → chat → pay → complete → review. The build passes cleanly: `npm run build` → ✓ 22 routes compiled.
+The full marketplace transaction loop is wired end-to-end: **sign up → pick role →** post job → bid → award → chat → pay → complete → review. Authentication is fully wired (magic link + password + Google OAuth + callback). A security audit found and fixed **critical RLS and money-handling vulnerabilities** (payment forge, self-dealing, rating manipulation). The build passes cleanly: `npm run build` → ✓ 22 routes compiled.
+
+> ⚠️ **Never run before.** The app compiles and lints green but has never been exercised against a real Supabase backend. All "complete" claims are code-complete, not runtime-verified. Link Supabase and run the smoke test (see TEAM.md) before trusting any of it.
 
 ### What's done
 
@@ -28,13 +30,16 @@ The full marketplace transaction loop is wired end-to-end: post job → bid → 
 | i18n | ✅ Done | en.ts, fil.ts dictionaries, t() helper with fallback, resolveLocale() |
 | Validation | ✅ Done | zod schemas for profiles, listings, bids, bookings, reviews, messages |
 | Geo utils | ✅ Done | getUserLocation(), haversineDistance(), RADIUS_OPTIONS |
-| DB migrations | ✅ Done | 8 migrations: profiles+auth, trades+workers, listings, bids, bookings, reviews+messages, payments_ledger, PostGIS RPC+FTS |
+| DB migrations | ✅ Done | 9 migrations: profiles+auth, trades+workers, listings, bids, bookings, reviews+messages, payments_ledger, PostGIS RPC+FTS, **security hardening (RLS locks, idempotency constraints, column guards)** |
 | Seed data | ✅ Done | 12 trade categories (mirrored in lib/trades.ts) |
 | App shell | ✅ Done | Root, marketing, auth, (app) layouts with sidebar + mobile bottom nav |
 | Pages (22) | ✅ Done | All route groups populated with real data queries |
 | shadcn components | ✅ Done | Button, Input, Card, Label, Badge, Select, Skeleton |
 | PWA | ✅ Done | manifest.ts, sw.ts (Serwist v9), offline.html, all icons generated |
 | Webhook handler | ✅ Done | Xendit webhook at /api/webhooks/xendit |
+| **Auth (login/signup/callback)** | ✅ **Done** | Magic link + password + Google OAuth login; email/password + Google OAuth signup; `/auth/callback` exchanges code for session; new users → `/role-select` |
+| **Auth validation** | ✅ **Done** | `lib/validation/auth.ts` (loginSchema, signupSchema) |
+| **ESLint config** | ✅ **Done** | `eslint.config.mjs` flat config (next/core-web-vitals + next/typescript) |
 | **Server Actions (7)** | ✅ **Done** | listings, bids, bookings, messages, profiles, reviews, payments |
 | **Core loop UI** | ✅ **Done** | post-job, find-work, job detail (bids), chat (realtime), booking lifecycle, payment |
 | **Dashboards** | ✅ **Done** | dashboard (live stats), my-jobs (bid counts), my-bids (earnings) |
@@ -163,7 +168,8 @@ npm run db:types         # Regenerate types from linked Supabase
 - **Supabase not yet linked** — `lib/supabase/types.ts` is hand-written. Runtime queries work once Supabase is linked and types regenerated.
 - **No live payment keys** — Webhook endpoint works but won't process real charges until Xendit keys are set.
 - **iOS background geolocation** — PWA limitation; worker background tracking deferred to React Native app (M5).
-- **Forms are static UI** — Post-job, profile edit, etc. render forms but don't yet call Server Actions. That's M1 work.
+- **Email confirmation** — Supabase's default flow requires email verification. For local dev without email, set "Enable email confirmations" off in Supabase Auth settings to auto-confirm signups (the signup flow handles both paths: auto-confirmed → `/role-select`, needs-confirmation → "check your email" screen).
+- **Google OAuth provider** — Requires Google client credentials configured in Supabase Auth providers. The OAuth buttons call `signInWithOAuth({ provider: "google" })` which fails gracefully if the provider isn't enabled.
 
 ## Testing the project without Supabase
 

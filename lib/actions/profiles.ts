@@ -68,8 +68,8 @@ export async function updateWorkerProfile(formData: {
   if (result.data.bio !== undefined) profileUpdate.bio = result.data.bio;
   if (result.data.hourly_rate !== undefined) profileUpdate.hourly_rate = result.data.hourly_rate;
   if (result.data.is_available !== undefined) profileUpdate.is_available = result.data.is_available;
-  if (formData.location) {
-    profileUpdate.location = `SRID=4326;POINT(${formData.location.lng} ${formData.location.lat})`;
+  if (result.data.location) {
+    profileUpdate.location = `SRID=4326;POINT(${result.data.location.lng} ${result.data.location.lat})`;
   }
 
   const { error: upsertError } = await supabase
@@ -120,13 +120,29 @@ export async function setRole(role: "customer" | "worker" | "both") {
     return { success: false, error: "Invalid role" };
   }
 
-  const { error } = await supabase
+  // Upsert so the role is persisted even if the handle_new_user trigger
+  // failed and no profiles row exists yet. (RLS insert policy requires
+  // id = auth.uid(); we set id explicitly to the authenticated user.)
+  const displayName = user.user_metadata?.display_name
+    ?? user.user_metadata?.full_name
+    ?? user.email?.split("@")[0]
+    ?? "User";
+
+  const { error, count } = await supabase
     .from("profiles")
-    .update({ role })
-    .eq("id", user.id);
+    .upsert(
+      { id: user.id, role, display_name: displayName },
+      { onConflict: "id", count: "exact" }
+    );
 
   if (error) {
     console.error("Set role error:", error);
+    return { success: false, error: "Failed to set role" };
+  }
+
+  // Defensive: if upsert matched 0 rows, the row wasn't written.
+  if (count === 0) {
+    console.error("Set role: upsert affected 0 rows for user", user.id);
     return { success: false, error: "Failed to set role" };
   }
 

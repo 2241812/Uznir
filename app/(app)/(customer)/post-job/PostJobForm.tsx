@@ -145,7 +145,7 @@ export function PostJobForm() {
         </div>
 
         <div>
-          <Label htmlFor="budget">Budget (₱)</Label>
+          <Label htmlFor="budget">Budget (PHP)</Label>
           <Input
             id="budget"
             type="number"

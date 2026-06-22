@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getGateway, calculatePlatformFee } from "@/lib/payments";
+import { getGateway, calculatePlatformFee, calculatePayoutAmount } from "@/lib/payments";
 
 export async function initiatePayment(bookingId: string) {
   const supabase = await createClient();
@@ -38,6 +38,29 @@ export async function initiatePayment(bookingId: string) {
 
   const amount = booking.final_price;
 
+  // Idempotency guard: check for an existing active charge on this booking.
+  // The partial unique index (one_active_charge_idx) is the DB-level backstop;
+  // this check avoids a wasted gateway call.
+  const { data: existingCharge } = await supabase
+    .from("payments_ledger")
+    .select("id, status, provider_charge_id")
+    .eq("booking_id", bookingId)
+    .eq("direction", "in")
+    .in("status", ["pending", "captured"])
+    .maybeSingle();
+
+  if (existingCharge) {
+    if (existingCharge.status === "captured") {
+      return { success: false, error: "Payment has already been captured for this booking" };
+    }
+    // A pending row exists — the charge is already in flight.
+    return {
+      success: true,
+      message: "Payment already initiated",
+      chargeId: existingCharge.provider_charge_id,
+    };
+  }
+
   // Record the charge in the ledger (pending)
   const { data: ledgerEntry, error: ledgerError } = await supabase
     .from("payments_ledger")
@@ -54,6 +77,11 @@ export async function initiatePayment(bookingId: string) {
     .single();
 
   if (ledgerError || !ledgerEntry) {
+    // 23505 = unique constraint violation from one_active_charge_idx.
+    // A concurrent request raced us — return gracefully.
+    if (ledgerError?.code === "23505") {
+      return { success: false, error: "Payment already in progress for this booking" };
+    }
     console.error("Ledger insert error:", ledgerError);
     return { success: false, error: "Failed to record payment" };
   }
@@ -105,20 +133,56 @@ export async function processPayout(bookingId: string) {
     return { success: false, error: "Not authenticated" };
   }
 
-  // This should typically be triggered by a webhook when the booking
-  // is marked completed, but can also be called manually.
   const { data: booking } = await supabase
     .from("bookings")
-    .select("id, worker_id, final_price, status")
+    .select("id, customer_id, worker_id, final_price, status")
     .eq("id", bookingId)
     .single();
 
-  if (!booking || booking.status !== "completed") {
-    return { success: false, error: "Booking must be completed" };
+  if (!booking) {
+    return { success: false, error: "Booking not found" };
+  }
+
+  if (booking.status !== "completed") {
+    return { success: false, error: "Booking must be completed before payout" };
+  }
+
+  // Authorization: only the customer may trigger payout review.
+  // (In production this would be a platform-only operation via webhook.)
+  if (booking.customer_id !== user.id) {
+    return { success: false, error: "Only the customer can trigger payouts" };
   }
 
   if (!booking.final_price) {
     return { success: false, error: "No price set" };
+  }
+
+  // Verify a captured payment exists for this booking. No payout without
+  // a confirmed charge — prevents money leak on uncompleted/unpaid bookings.
+  const { data: capturedCharge } = await supabase
+    .from("payments_ledger")
+    .select("id, amount")
+    .eq("booking_id", bookingId)
+    .eq("direction", "in")
+    .eq("status", "captured")
+    .maybeSingle();
+
+  if (!capturedCharge) {
+    return { success: false, error: "No captured payment found for this booking" };
+  }
+
+  // Idempotency: check if a payout already exists for this booking.
+  // The one_payout_idx is the DB-level backstop.
+  const { data: existingPayout } = await supabase
+    .from("payments_ledger")
+    .select("id")
+    .eq("booking_id", bookingId)
+    .eq("direction", "out")
+    .in("status", ["pending", "paid_out"])
+    .maybeSingle();
+
+  if (existingPayout) {
+    return { success: false, error: "Payout already initiated for this booking" };
   }
 
   // Get worker's payout info
@@ -132,8 +196,8 @@ export async function processPayout(bookingId: string) {
     return { success: false, error: "Worker profile not found" };
   }
 
-  const payoutAmount = booking.final_price - calculatePlatformFee(booking.final_price);
-  const platformFee = calculatePlatformFee(booking.final_price);
+  const platformFee = calculatePlatformFee(capturedCharge.amount);
+  const payoutAmount = calculatePayoutAmount(capturedCharge.amount);
 
   // Record platform fee
   await supabase.from("payments_ledger").insert({

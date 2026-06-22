@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils/currency";
 import { Badge } from "@/components/ui/badge";
@@ -37,11 +38,13 @@ export default async function MyBidsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  if (!user) {
+    redirect("/login");
+  }
 
   // My bids + the listing they're on. RLS on bids restricts to worker_id = me
   // (plus any bid where I'm the customer viewing the listing).
-  const { data: bids } = await supabase
+  const { data: bids, error } = await supabase
     .from("bids")
     .select(
       "id, amount, status, created_at, listing_id, listings(id, title, budget, status)"
@@ -49,6 +52,10 @@ export default async function MyBidsPage() {
     .eq("worker_id", user.id)
     .order("created_at", { ascending: false })
     .returns<MyBidRow[]>();
+
+  if (error) {
+    throw new Error("Failed to fetch bids: " + error.message);
+  }
 
   // Accepted bids that became bookings — for earnings summary.
   const { data: acceptedBids } = await supabase

@@ -1,3 +1,4 @@
+import { timingSafeEqual as cryptoTimingSafeEqual } from "crypto";
 import type {
   PaymentGateway,
   ChargeOptions,
@@ -52,7 +53,8 @@ export class XenditGateway implements PaymentGateway {
       },
       body: JSON.stringify({
         external_id: `uznir-charge-${options.bookingId}-${Date.now()}`,
-        amount: Math.round(options.amount * 100), // Xendit uses smallest currency unit
+        // Xendit Invoice API expects amount in major currency unit (PHP pesos)
+        amount: Math.round(options.amount), // Round to whole pesos (Xendit Invoice doesn't support centavos for PHP)
         currency: options.currency,
         customer: {
           given_names: options.customerId,
@@ -61,7 +63,7 @@ export class XenditGateway implements PaymentGateway {
         items: [
           {
             name: options.description || `Booking ${options.bookingId}`,
-            price: Math.round(options.amount * 100),
+            price: Math.round(options.amount),
             quantity: 1,
           },
         ],
@@ -101,6 +103,7 @@ export class XenditGateway implements PaymentGateway {
       },
       body: JSON.stringify({
         external_id: `uznir-payout-${options.bookingId}-${Date.now()}`,
+        // Xendit Disbursements API expects amount in smallest currency unit (centavos)
         amount: Math.round(options.amount * 100),
         currency: options.currency,
         destination_account_number: options.recipient.payoutMethod.accountNumber,
@@ -130,10 +133,22 @@ export class XenditGateway implements PaymentGateway {
   }
 
   webhookVerifier(rawBody: string, headers: Record<string, string>): WebhookEvent | null {
-    // Verify Xendit webhook signature
-    // Xendit uses a callback verification token
+    // Verify Xendit webhook signature.
+    // Xendit uses a callback verification token (x-callback-token header).
     const callbackToken = headers["x-callback-token"];
-    if (!callbackToken || callbackToken !== this.webhookSecret) {
+
+    // If no webhook secret is configured, reject ALL webhooks rather than
+    // risk accepting forged ones. An empty secret must never validate.
+    if (!this.webhookSecret) {
+      console.error(
+        "XENDIT_WEBHOOK_SECRET is not set — rejecting webhook. " +
+        "Webhook processing requires the secret to be configured."
+      );
+      return null;
+    }
+
+    // Constant-time comparison to prevent timing attacks.
+    if (!callbackToken || !timingSafeEqual(callbackToken, this.webhookSecret)) {
       console.warn("Invalid Xendit webhook callback token");
       return null;
     }
@@ -158,4 +173,14 @@ export class XenditGateway implements PaymentGateway {
     };
     return map[type] || "PH_BANK";
   }
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks on token verification.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a, "utf8");
+  const bBuf = Buffer.from(b, "utf8");
+  if (aBuf.length !== bBuf.length) return false;
+  return cryptoTimingSafeEqual(aBuf, bBuf);
 }

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils/currency";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -15,13 +16,19 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  if (!user) {
+    redirect("/login");
+  }
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
     .select("role, display_name")
     .eq("id", user.id)
     .single();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error("Failed to load profile: " + error.message);
+  }
 
   const role = profile?.role || "customer";
   const name = profile?.display_name || "there";
@@ -96,7 +103,7 @@ export default async function DashboardPage() {
             <StatCard label="Pending bids" value={String(pendingBids)} href="/my-bids" />
             <StatCard
               label="Won bids total"
-              value={wonEarnings > 0 ? formatCurrency(wonEarnings) : "₱0"}
+              value={wonEarnings > 0 ? formatCurrency(wonEarnings) : formatCurrency(0)}
               href="/my-bids"
             />
           </>

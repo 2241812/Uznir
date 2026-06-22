@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual as cryptoTimingSafeEqual } from "crypto";
 import type {
   PaymentGateway,
   ChargeOptions,
@@ -121,18 +122,50 @@ export class PayMongoGateway implements PaymentGateway {
 
   webhookVerifier(rawBody: string, headers: Record<string, string>): WebhookEvent | null {
     // PayMongo uses PayMongo-Signature header (HMAC-SHA256)
+    // Format: "t=<timestamp>,h1=<hex>"
     const signature = headers["paymongo-signature"];
     if (!signature) {
       console.warn("Missing PayMongo signature header");
       return null;
     }
 
-    // In production, verify the HMAC signature:
-    // const [timestamp, hash] = signature.split(",");
-    // const expectedHash = createHmac('sha256', this.webhookSecret)
-    //   .update(`${timestamp}.${rawBody}`)
-    //   .digest('hex');
-    // if (hash !== expectedHash) return null;
+    // Verify the HMAC signature when a webhook secret is configured.
+    // If no webhook secret is configured, reject ALL webhooks rather than
+    // risk accepting forged ones. An empty secret must never validate.
+    if (!this.webhookSecret) {
+      console.error(
+        "PayMongo webhook secret not configured — rejecting webhook. " +
+        "Webhook processing requires the secret to be configured."
+      );
+      return null;
+    }
+
+    const parts: Record<string, string> = {};
+    for (const pair of signature.split(",")) {
+      const [key, value] = pair.split("=");
+      if (key && value) parts[key.trim()] = value.trim();
+    }
+
+    const timestamp = parts["t"];
+    const hash = parts["h1"];
+
+    if (!timestamp || !hash) {
+      console.warn("Malformed PayMongo signature format");
+      return null;
+    }
+
+    const expectedHash = createHmac("sha256", this.webhookSecret)
+      .update(`${timestamp}.${rawBody}`)
+      .digest("hex");
+
+    // Constant-time comparison to prevent timing attacks.
+    if (
+      expectedHash.length !== hash.length ||
+      !timingSafeEqual(expectedHash, hash)
+    ) {
+      console.warn("PayMongo webhook signature verification failed");
+      return null;
+    }
 
     try {
       const payload = JSON.parse(rawBody);
@@ -155,4 +188,14 @@ export class PayMongoGateway implements PaymentGateway {
     };
     return map[type] || ["gcash", "paymaya", "card"];
   }
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks on HMAC verification.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a, "utf8");
+  const bBuf = Buffer.from(b, "utf8");
+  if (aBuf.length !== bBuf.length) return false;
+  return cryptoTimingSafeEqual(aBuf, bBuf);
 }

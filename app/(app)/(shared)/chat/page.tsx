@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -24,46 +25,52 @@ export default async function ChatListPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return null;
+    redirect("/login");
   }
 
   // Bookings where the current user is a participant. RLS hides bookings
   // they're not party to, so this is safe without an explicit filter.
-  const { data: conversations } = await supabase
+  const { data: conversations, error } = await supabase
     .from("bookings")
     .select("id, status, created_at, customer_id, worker_id")
     .or(`customer_id.eq.${user.id},worker_id.eq.${user.id}`)
     .order("created_at", { ascending: false });
 
-  const rows: ConversationRow[] = [];
+  if (error) {
+    throw new Error("Failed to fetch conversations: " + error.message);
+  }
 
-  if (conversations) {
-    for (const c of conversations) {
-      const otherId = c.customer_id === user.id ? c.worker_id : c.customer_id;
+  let rows: ConversationRow[] = [];
 
-      const [{ data: other }, { data: lastMsg }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", otherId)
-          .maybeSingle(),
-        supabase
-          .from("messages")
-          .select("body")
-          .eq("booking_id", c.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+  if (conversations && conversations.length > 0) {
+    rows = await Promise.all(
+      conversations.map(async (c) => {
+        const otherId = c.customer_id === user.id ? c.worker_id : c.customer_id;
 
-      rows.push({
-        id: c.id,
-        status: c.status,
-        updated_at: c.created_at,
-        last_body: lastMsg?.body ?? null,
-        other: other ? [{ display_name: other.display_name }] : null,
-      });
-    }
+        const [{ data: other }, { data: lastMsg }] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", otherId)
+            .maybeSingle(),
+          supabase
+            .from("messages")
+            .select("body")
+            .eq("booking_id", c.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+        return {
+          id: c.id,
+          status: c.status,
+          updated_at: c.created_at,
+          last_body: lastMsg?.body ?? null,
+          other: other ? [{ display_name: other.display_name }] : null,
+        };
+      })
+    );
   }
 
   return (

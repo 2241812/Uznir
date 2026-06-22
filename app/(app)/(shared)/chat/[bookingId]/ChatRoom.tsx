@@ -37,6 +37,7 @@ export function ChatRoom({
   const [partnerTyping, setPartnerTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const channelRef = useRef<ReturnType<typeof createClient> extends { channel: (name: string) => infer C } ? C : any>(null);
 
   // Scroll to bottom on new messages.
   useEffect(() => {
@@ -47,8 +48,10 @@ export function ChatRoom({
   // Subscribe to realtime inserts on this booking's messages.
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`chat:${bookingId}`)
+    const channel = supabase.channel(`chat:${bookingId}`);
+    channelRef.current = channel;
+
+    channel
       .on(
         "postgres_changes",
         {
@@ -81,16 +84,18 @@ export function ChatRoom({
 
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
   }, [bookingId, currentUserId]);
 
   function broadcastTyping(isTyping: boolean) {
-    const supabase = createClient();
-    supabase.channel(`chat:${bookingId}`).send({
-      type: "broadcast",
-      event: "typing",
-      payload: { userId: currentUserId, isTyping: String(isTyping) },
-    });
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: "broadcast",
+        event: "typing",
+        payload: { userId: currentUserId, isTyping: String(isTyping) },
+      });
+    }
   }
 
   function handleChange(value: string) {

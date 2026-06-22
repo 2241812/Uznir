@@ -4,9 +4,8 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getUserLocation, RADIUS_OPTIONS, type RadiusKm } from "@/lib/geo";
 import { formatCurrency, formatDistance } from "@/lib/utils/currency";
-import { t } from "@/lib/i18n";
 import { StarRating } from "@/components/features/StarRating";
-import { MapPin, Star, Clock, Loader2 } from "lucide-react";
+import { MapPin, Clock, Loader2 } from "lucide-react";
 import type { NearbyWorker } from "@/lib/supabase/types";
 
 const TRADE_NAMES: Record<number, string> = {
@@ -170,8 +169,8 @@ export default function NearbyPage() {
                 </div>
               </div>
 
-              <button className="shrink-0 rounded-lg border border-primary/20 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/5 transition-colors">
-                View profile
+              <button disabled className="shrink-0 rounded-lg border border-primary/20 px-4 py-2 text-sm font-medium text-primary opacity-50 cursor-not-allowed">
+                View profile (Soon)
               </button>
             </div>
           ))}

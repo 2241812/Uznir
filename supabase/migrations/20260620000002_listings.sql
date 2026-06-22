@@ -28,11 +28,10 @@ create policy "listings: customer sees own, worker sees open"
   using (
     auth.uid() = customer_id
     or status = 'open'
-    or exists (
-      select 1 from public.bids b
-      where b.listing_id = listings.id and b.worker_id = auth.uid()
-    )
   );
+
+-- NOTE: the "worker sees listings they bid on" subclause is added in
+-- migration 20260620000003_bids.sql after the bids table exists.
 
 create policy "customers create listings"
   on public.listings for insert

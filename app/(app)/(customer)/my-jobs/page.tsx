@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils/currency";
 import { getTradeName } from "@/lib/trades";
@@ -36,15 +37,21 @@ export default async function MyJobsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  if (!user) {
+    redirect("/login");
+  }
 
   // Own listings + the bid count per listing. RLS restricts to customer_id = me.
-  const { data: jobs } = await supabase
+  const { data: jobs, error } = await supabase
     .from("listings")
     .select("id, title, status, budget, trade_id, created_at, bids(id)")
     .eq("customer_id", user.id)
     .order("created_at", { ascending: false })
     .returns<MyJobRow[]>();
+
+  if (error) {
+    throw new Error("Failed to fetch jobs: " + error.message);
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">

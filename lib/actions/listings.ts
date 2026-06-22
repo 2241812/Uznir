@@ -29,6 +29,7 @@ export async function createListing(_input: CreateListingInput) {
     description,
     trade_id,
     budget,
+    // Supabase client parameterizes this value — lat/lng are finite numbers validated by zod
     location: `SRID=4326;POINT(${lng} ${lat})`,
     status: "open",
   });

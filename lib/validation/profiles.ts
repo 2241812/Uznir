@@ -23,6 +23,10 @@ export const updateWorkerProfileSchema = z.object({
     .optional(),
   is_available: z.boolean().optional(),
   trades: z.array(z.number()).optional(),
+  location: z.object({
+    lat: z.number().finite().min(-90).max(90),
+    lng: z.number().finite().min(-180).max(180),
+  }).optional(),
 });
 
 export type UpdateWorkerProfileInput = z.infer<typeof updateWorkerProfileSchema>;

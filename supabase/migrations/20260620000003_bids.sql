@@ -58,5 +58,20 @@ create policy "customers update bids on their listings"
     )
   );
 
+-- Now that bids table exists, update the listings SELECT policy so workers
+-- can also see listings they've bid on.
+drop policy "listings: customer sees own, worker sees open" on public.listings;
+create policy "listings: customer sees own, worker sees open"
+  on public.listings for select
+  to authenticated
+  using (
+    auth.uid() = customer_id
+    or status = 'open'
+    or exists (
+      select 1 from public.bids b
+      where b.listing_id = listings.id and b.worker_id = auth.uid()
+    )
+  );
+
 -- ROLLBACK:
 -- drop table public.bids;
