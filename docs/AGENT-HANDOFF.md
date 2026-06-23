@@ -24,7 +24,7 @@ The full marketplace transaction loop is wired end-to-end: **sign up → pick ro
 | Project scaffold | ✅ Done | package.json, tsconfig, postcss, next.config with Serwist |
 | Git repo | ✅ Done | Pushed to https://github.com/2241812/Uznir (main branch) |
 | Documentation | ✅ Done | README, AGENTS.md, architecture.md, data-model.md, payments.md, roadmap.md, deployment.md, CONTRIBUTING.md, **this handoff doc** |
-| Custom skills | ✅ Done | skills/uznir-feature, uznir-rls, uznir-db-migration, uznir-i18n |
+| Custom skills | ✅ Done | skills/uznir-feature, uznir-rls, uznir-db-migration, uznir-i18n, **uznir-agentic-prompt** |
 | Supabase lib | ✅ Done | client.ts, server.ts, middleware.ts, types.ts (hand-written — replace with `db:types` output after linking) |
 | Payments lib | ✅ Done | Gateway interface, Xendit + PayMongo adapters, factory, commission helpers |
 | i18n | ✅ Done | en.ts, fil.ts dictionaries, t() helper with fallback, resolveLocale() |
@@ -137,7 +137,7 @@ supabase/
   migrations/            8 SQL migrations
   seed.sql               12 trade categories
   config.toml            Local dev Supabase config
-skills/                  Custom agent skills
+skills/                  Custom agent skills (start with uznir-agentic-prompt)
 ```
 
 ## Key patterns to follow (from AGENTS.md)
